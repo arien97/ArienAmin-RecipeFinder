@@ -95,7 +95,9 @@ fun RecipeSearchScreen(viewModel: RecipeViewModel, navController: NavController)
             }, onCuisineChange = {
                 cuisine = it
             }, onDietChange = {
-                diet = it
+                if (it != null) {
+                    diet = it
+                }
             }, onMaxCaloriesChange = {
                 maxCalories = it
             }, viewModel, navController)
@@ -118,7 +120,9 @@ fun RecipeSearchScreen(viewModel: RecipeViewModel, navController: NavController)
                 }, onCuisineChange = {
                     cuisine = it
                 }, onDietChange = {
-                    diet = it
+                    if (it != null) {
+                        diet = it
+                    }
                 }, onMaxCaloriesChange = {
                     maxCalories = it
                 }, viewModel, navController)
@@ -136,26 +140,22 @@ fun RecipeSearchScreen(viewModel: RecipeViewModel, navController: NavController)
 fun RecipeSearchFields(
     query: String,
     cuisine: String,
-    diet: String,
+    diet: String?,
     maxCalories: String,
     onQueryChange: (String) -> Unit,
     onCuisineChange: (String) -> Unit,
-    onDietChange: (String) -> Unit,
+    onDietChange: (String?) -> Unit,
     onMaxCaloriesChange: (String) -> Unit,
     viewModel: RecipeViewModel,
     navController: NavController
 ) {
-    // Search query input
     TextField(
         value = query,
         onValueChange = onQueryChange,
         label = { Text("Search recipes") },
         modifier = Modifier.fillMaxWidth()
     )
-
     Spacer(modifier = Modifier.height(8.dp))
-
-    // Cuisine input
     TextField(
         value = cuisine,
         onValueChange = onCuisineChange,
@@ -164,13 +164,8 @@ fun RecipeSearchFields(
     )
 
     Spacer(modifier = Modifier.height(8.dp))
-
-    // Diet dropdown menu
-    DietDropdownMenu(diet, onDietChange)
-
+    DietDropdownMenu(selectedDiet = diet, onDietChange = onDietChange)
     Spacer(modifier = Modifier.height(8.dp))
-
-    // Max calories input
     TextField(
         value = maxCalories,
         onValueChange = onMaxCaloriesChange,
@@ -178,19 +173,17 @@ fun RecipeSearchFields(
         modifier = Modifier.fillMaxWidth(),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
     )
-
     Spacer(modifier = Modifier.height(16.dp))
-
-    // Search button
     Button(onClick = {
         val calories = maxCalories.toIntOrNull()
         viewModel.searchRecipes(query, diet, cuisine, calories)
+        onDietChange(null) // Reset the diet selection after search
     }) {
         Text("Search")
     }
 }
 
-// Composable function to display a list of recipes
+
 @Composable
 fun RecipeList(recipes: List<Recipe>) {
     Column {
@@ -388,19 +381,21 @@ fun RecipeListScreen(
 }
 
 @Composable
-fun DietDropdownMenu(selectedDiet: String, onDietChange: (String) -> Unit) {
+fun DietDropdownMenu(selectedDiet: String?, onDietChange: (String?) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     val dietOptions = listOf(
-        "All", "Gluten Free", "Ketogenic", "Vegetarian", "Lacto-Vegetarian", "Ovo-Vegetarian",
+        "Gluten Free", "Ketogenic", "Vegetarian", "Lacto-Vegetarian", "Ovo-Vegetarian",
         "Vegan", "Pescetarian", "Paleo", "Primal", "Low FODMAP", "Whole30"
     )
 
     Box {
         TextField(
-            value = selectedDiet,
-            onValueChange = onDietChange,
+            value = selectedDiet ?: "",
+            onValueChange = { /* No-op since it's read-only */ },
             label = { Text("Diet (optional)") },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = true },
             readOnly = true,
             trailingIcon = {
                 Icon(
@@ -420,15 +415,13 @@ fun DietDropdownMenu(selectedDiet: String, onDietChange: (String) -> Unit) {
                     onClick = {
                         onDietChange(diet)
                         expanded = false
-                    },
-                    modifier = Modifier,  // You can adjust this if needed, or just use Modifier if not customized
-                    enabled = true,       // Enable the item by default, you can toggle this based on your logic
-                    interactionSource = remember { MutableInteractionSource() }  // Provide an interaction source
+                    }
                 )
             }
         }
     }
 }
+
 
 @Composable
 fun RecipeItem(recipe: Recipe, onClick: () -> Unit) {
