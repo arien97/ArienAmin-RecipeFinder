@@ -1,3 +1,5 @@
+/* Tested on Medium Phone and Medium Tablet */
+
 package com.example.hw5recipefinder
 
 import android.content.res.Configuration
