@@ -1,12 +1,14 @@
 package com.example.hw5recipefinder.api
 
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import org.jsoup.Jsoup
 
 // Repository to interact with the API
 class RecipeRepository(private val apiService: SpoonacularApiService) {
@@ -17,7 +19,12 @@ class RecipeRepository(private val apiService: SpoonacularApiService) {
     }
 
     suspend fun getRecipeDetails(id: Int): Recipe {
-        return apiService.getRecipeDetails(id)
+        val recipe = apiService.getRecipeDetails(id)
+        Log.d("RecipeRepository", "Fetching details for recipe ID: $id")
+        Log.d("RecipeRepository", "Received recipe details: $recipe")
+        val cleanedInstructions = recipe.instructions?.let { Jsoup.parse(it).text() }
+        return recipe.copy(instructions = cleanedInstructions)
+        //return apiService.getRecipeDetails(id)
     }
 }
 
@@ -34,7 +41,14 @@ class RecipeViewModel(private val repository: RecipeRepository) : ViewModel() {
 
     fun getRecipeDetails(id: Int) {
         viewModelScope.launch {
-            _recipeDetails.value = repository.getRecipeDetails(id)
+            try {
+                Log.d("RecipeViewModel", "Fetching details for recipe ID: $id")
+                val details = repository.getRecipeDetails(id)
+                Log.d("RecipeViewModel", "Fetched details: $details")
+                _recipeDetails.value = details
+            } catch (e: Exception) {
+                Log.e("RecipeViewModel", "Error fetching recipe details", e)
+            }
         }
     }
     // Function to search for recipes

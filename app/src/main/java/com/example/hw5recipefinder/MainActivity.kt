@@ -1,23 +1,36 @@
 package com.example.hw5recipefinder
 
+import android.content.res.Configuration
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 //noinspection UsingMaterialAndMaterial3Libraries
 import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -25,6 +38,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
@@ -39,6 +53,7 @@ import androidx.navigation.NavHost
 import androidx.navigation.compose.rememberNavController
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
+import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
 import com.example.hw5recipefinder.api.Recipe
 import com.example.hw5recipefinder.api.RecipeViewModel
@@ -65,75 +80,115 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun RecipeSearchScreen(viewModel: RecipeViewModel, navController: NavController) {
+    val configuration = LocalConfiguration.current
+    val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
     var query by remember { mutableStateOf("") }
     var cuisine by remember { mutableStateOf("") }
     var diet by remember { mutableStateOf("") }
     var maxCalories by remember { mutableStateOf("") }
+    val recipes by viewModel.recipes.collectAsState()
 
-    Column(modifier = Modifier.padding(16.dp)) {
-        // Search query input
-        TextField(
-            value = query,
-            onValueChange = { query = it },
-            label = { Text("Search recipes") },
-            modifier = Modifier.fillMaxWidth()
-        )
+    if (isPortrait) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            RecipeSearchFields(query, cuisine, diet, maxCalories, onQueryChange = {
+                query = it
+            }, onCuisineChange = {
+                cuisine = it
+            }, onDietChange = {
+                diet = it
+            }, onMaxCaloriesChange = {
+                maxCalories = it
+            }, viewModel, navController)
 
-        Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-        // Cuisine input
-        TextField(
-            value = cuisine,
-            onValueChange = { cuisine = it },
-            label = { Text("Cuisine (optional)") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Diet input
-        TextField(
-            value = diet,
-            onValueChange = { diet = it },
-            label = { Text("Diet (optional)") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Max calories input
-        TextField(
-            value = maxCalories,
-            onValueChange = { maxCalories = it },
-            label = { Text("Max Calories (optional)") },
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Search button
-        Button(onClick = {
-            val calories = maxCalories.toIntOrNull()
-            viewModel.searchRecipes(query, diet, cuisine, calories)
-        }) {
-            Text("Search")
+            // Display search results in portrait mode
+            RecipeListScreen(recipes, navController)
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Display the search results
-        val recipes by viewModel.recipes.collectAsState()
-        LazyColumn {
-            items(recipes) { recipe ->
-                RecipeItem(recipe = recipe, onClick = {
-                    navController.navigate("recipeDetails/${recipe.id}")
-                })
+    } else {
+        Row(modifier = Modifier.padding(16.dp)) {
+            // Search bar on the left
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 16.dp)
+            ) {
+                RecipeSearchFields(query, cuisine, diet, maxCalories, onQueryChange = {
+                    query = it
+                }, onCuisineChange = {
+                    cuisine = it
+                }, onDietChange = {
+                    diet = it
+                }, onMaxCaloriesChange = {
+                    maxCalories = it
+                }, viewModel, navController)
+            }
+            Column(modifier = Modifier.weight(2f)) {
+                // Display search results in landscape mode
+                RecipeListScreen(recipes, navController)
             }
         }
     }
 }
 
+
+@Composable
+fun RecipeSearchFields(
+    query: String,
+    cuisine: String,
+    diet: String,
+    maxCalories: String,
+    onQueryChange: (String) -> Unit,
+    onCuisineChange: (String) -> Unit,
+    onDietChange: (String) -> Unit,
+    onMaxCaloriesChange: (String) -> Unit,
+    viewModel: RecipeViewModel,
+    navController: NavController
+) {
+    // Search query input
+    TextField(
+        value = query,
+        onValueChange = onQueryChange,
+        label = { Text("Search recipes") },
+        modifier = Modifier.fillMaxWidth()
+    )
+
+    Spacer(modifier = Modifier.height(8.dp))
+
+    // Cuisine input
+    TextField(
+        value = cuisine,
+        onValueChange = onCuisineChange,
+        label = { Text("Cuisine (optional)") },
+        modifier = Modifier.fillMaxWidth()
+    )
+
+    Spacer(modifier = Modifier.height(8.dp))
+
+    // Diet dropdown menu
+    DietDropdownMenu(diet, onDietChange)
+
+    Spacer(modifier = Modifier.height(8.dp))
+
+    // Max calories input
+    TextField(
+        value = maxCalories,
+        onValueChange = onMaxCaloriesChange,
+        label = { Text("Max Calories (optional)") },
+        modifier = Modifier.fillMaxWidth(),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+    )
+
+    Spacer(modifier = Modifier.height(16.dp))
+
+    // Search button
+    Button(onClick = {
+        val calories = maxCalories.toIntOrNull()
+        viewModel.searchRecipes(query, diet, cuisine, calories)
+    }) {
+        Text("Search")
+    }
+}
 
 // Composable function to display a list of recipes
 @Composable
@@ -141,7 +196,7 @@ fun RecipeList(recipes: List<Recipe>) {
     Column {
         for (recipe in recipes) {
             RecipeItem(recipe)
-            Divider()
+            HorizontalDivider()
         }
     }
 }
@@ -155,15 +210,7 @@ fun RecipeItem(recipe: Recipe) {
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        AsyncImage(
-            model = recipe.image,
-            contentDescription = "Recipe Image",
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp),
-            contentScale = ContentScale.Crop
-
-        )
+        ImageFromUrl(recipe.image)
 
         Spacer(modifier = Modifier.width(16.dp))
 
@@ -182,76 +229,141 @@ fun RecipeItem(recipe: Recipe) {
         }
     }
 }
+@Composable
+fun ImageFromUrl(imageUrl: String, modifier: Modifier = Modifier) {
+    val painter = rememberAsyncImagePainter(model = imageUrl)
+    val painterState by painter.state.collectAsState()
+
+    Box(modifier = modifier.fillMaxSize()) {
+        AsyncImage(
+            model = imageUrl,
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+        when (painterState) {
+            is AsyncImagePainter.State.Loading -> {
+                // Display a loading indicator
+                Text("Loading...")
+                Log.d("ImageFromUrl", "Loading image from URL: $imageUrl")
+            }
+            is AsyncImagePainter.State.Error -> {
+                // Display an error message
+                Text("Error loading image")
+                Log.e("ImageFromUrl", "Error loading image from URL: $imageUrl")
+                val errorState = painterState as AsyncImagePainter.State.Error
+                Log.e("ImageFromUrl", "Error: ${errorState.result.throwable}")
+            }
+            is AsyncImagePainter.State.Success -> {
+                // Image loaded successfully
+                Log.d("ImageFromUrl", "Successfully loaded image from URL: $imageUrl")
+            }
+            else -> {
+                // Handle other states if necessary
+            }
+        }
+    }
+}
 
 @Composable
 fun RecipeDetailsScreen(
-    recipeId: Int,  // Fetch recipe by ID, if needed
-    recipe: Recipe?,
+    recipeId: Int,
+    viewModel: RecipeViewModel,
     navController: NavController
 ) {
-    // Use a Box layout to allow the button to stay fixed at the bottom
-    Box(modifier = Modifier.fillMaxSize()) {
-        // Scrollable content
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState())
-        ) {
-            recipe?.let {
-                Text(text = it.title, style = MaterialTheme.typography.displayLarge)
-                Spacer(modifier = Modifier.height(8.dp))
+    val recipe by viewModel.recipeDetails.collectAsState()
+    val configuration = LocalConfiguration.current
+    val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
 
-                Text(text = recipe.image)
-                Image(
-                    painter = rememberAsyncImagePainter(recipe.image),
-                    contentDescription = null,
-                    modifier = Modifier.size(128.dp)
-                )
-                // Recipe Image
-                AsyncImage(
-                    model = recipe.image,
-                    contentDescription = "Recipe Image",
+    LaunchedEffect(recipeId) {
+        Log.d("RecipeDetailsScreen", "Fetching details for recipe ID: $recipeId")
+        viewModel.getRecipeDetails(recipeId)
+    }
+
+    if (recipe == null) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+        }
+    } else {
+        recipe?.let { recipeDetails ->
+            if (isPortrait) {
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(200.dp),
-                    contentScale = ContentScale.Crop
-
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Ingredients
-                Text(text = "Ingredients", style = MaterialTheme.typography.displayMedium)
-                it.extendedIngredients.forEach { ingredient ->
-                    Text(text = "${ingredient.name}: ${ingredient.amount} ${ingredient.unit}")
+                        .padding(16.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    RecipeDetailsContent(recipeDetails)
+                    Spacer(modifier = Modifier.height(60.dp))
                 }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(end = 16.dp)
+                            ) {
+                                Text(text = recipeDetails.title, style = MaterialTheme.typography.displayLarge)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                ImageFromUrl(recipeDetails.image)
+                            }
+                            Column(
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(text = "Ingredients", style = MaterialTheme.typography.displaySmall)
+                                recipeDetails.extendedIngredients.forEach { ingredient ->
+                                    Text(text = "${ingredient.name}: ${ingredient.amount} ${ingredient.unit}")
+                                }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                                Spacer(modifier = Modifier.height(8.dp))
 
-                // Instructions
-                Text(text = "Instructions", style = MaterialTheme.typography.bodyMedium)
-                it.instructions?.let { instructions ->
-                    Text(text = instructions)
-                } ?: Text("Instructions not available")
-
-                Spacer(modifier = Modifier.height(16.dp))
-            } ?: run {
-                Text(text = "Recipe details not available")
+                                Text(text = "Instructions", style = MaterialTheme.typography.displaySmall)
+                                Text(recipeDetails.instructions ?: "Instructions not available")
+                            }
+                        }
+                    }
+                }
             }
-
-            Spacer(modifier = Modifier.height(60.dp))
-        }
-
-        // Fixed Back to Search button at the bottom
-        Button(
-            onClick = { navController.popBackStack() },
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(16.dp)
-        ) {
-            Text(text = "Back to Search")
+            Box(modifier = Modifier.fillMaxSize()) {
+                Button(
+                    onClick = { navController.popBackStack() },
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(16.dp)
+                ) {
+                    Text(text = "Back to Search")
+                }
+            }
         }
     }
+}
+
+@Composable
+fun RecipeDetailsContent(recipeDetails: Recipe) {
+    Text(text = recipeDetails.title, style = MaterialTheme.typography.displayLarge)
+    Spacer(modifier = Modifier.height(8.dp))
+    ImageFromUrl(recipeDetails.image)
+    Spacer(modifier = Modifier.height(8.dp))
+
+    Text(text = "Ingredients", style = MaterialTheme.typography.displaySmall)
+    recipeDetails.extendedIngredients.forEach { ingredient ->
+        Text(text = "${ingredient.name}: ${ingredient.amount} ${ingredient.unit}")
+    }
+
+    Spacer(modifier = Modifier.height(8.dp))
+
+    Text(text = "Instructions", style = MaterialTheme.typography.displaySmall)
+    Text(recipeDetails.instructions ?: "Instructions not available")
 }
 
 @Composable
@@ -259,11 +371,61 @@ fun RecipeListScreen(
     recipes: List<Recipe>,
     navController: NavController
 ) {
-    LazyColumn {
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp
+    val columns = if (screenWidth > 600) 2 else 1
+
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(columns),
+        contentPadding = PaddingValues(16.dp)
+    ) {
         items(recipes) { recipe ->
             RecipeItem(recipe = recipe, onClick = {
                 navController.navigate("recipeDetails/${recipe.id}")
             })
+        }
+    }
+}
+
+@Composable
+fun DietDropdownMenu(selectedDiet: String, onDietChange: (String) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    val dietOptions = listOf(
+        "All", "Gluten Free", "Ketogenic", "Vegetarian", "Lacto-Vegetarian", "Ovo-Vegetarian",
+        "Vegan", "Pescetarian", "Paleo", "Primal", "Low FODMAP", "Whole30"
+    )
+
+    Box {
+        TextField(
+            value = selectedDiet,
+            onValueChange = onDietChange,
+            label = { Text("Diet (optional)") },
+            modifier = Modifier.fillMaxWidth(),
+            readOnly = true,
+            trailingIcon = {
+                Icon(
+                    imageVector = Icons.Default.ArrowDropDown,
+                    contentDescription = null,
+                    modifier = Modifier.clickable { expanded = true }
+                )
+            }
+        )
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            dietOptions.forEach { diet ->
+                DropdownMenuItem(
+                    text = { Text(text = diet) },
+                    onClick = {
+                        onDietChange(diet)
+                        expanded = false
+                    },
+                    modifier = Modifier,  // You can adjust this if needed, or just use Modifier if not customized
+                    enabled = true,       // Enable the item by default, you can toggle this based on your logic
+                    interactionSource = remember { MutableInteractionSource() }  // Provide an interaction source
+                )
+            }
         }
     }
 }
@@ -277,16 +439,8 @@ fun RecipeItem(recipe: Recipe, onClick: () -> Unit) {
             .clickable(onClick = onClick)
     ) {
         Column {
-            AsyncImage(
-                model = recipe.image,
-                contentDescription = "Recipe Image",
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp),
-                contentScale = ContentScale.Crop
-
-            )
-            Text(text = recipe.title, style = MaterialTheme.typography.displayLarge)
+            ImageFromUrl(recipe.image)
+            Text(text = recipe.title, style = MaterialTheme.typography.displayMedium)
         }
     }
 }
@@ -321,12 +475,9 @@ fun RecipeApp(recipeViewModel: RecipeViewModel) {
         composable("recipeDetails/{recipeId}") { backStackEntry ->
             val recipeId = backStackEntry.arguments?.getString("recipeId")?.toInt()
 
-            // Find the recipe using collectAsState to observe the list
-            val recipe = recipes.find { it.id == recipeId }
-
             RecipeDetailsScreen(
                 recipeId = recipeId ?: 0,
-                recipe = recipe,
+                viewModel = recipeViewModel,
                 navController = navController
             )
         }

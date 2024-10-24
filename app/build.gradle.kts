@@ -45,6 +45,10 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/kotlinx-io.kotlin_module"
+            excludes += "META-INF/atomicfu.kotlin_module"
+            excludes += "META-INF/kotlinx-coroutines-io.kotlin_module"
+            excludes += "META-INF/kotlinx-coroutines-core.kotlin_module"
         }
     }
 }
@@ -54,13 +58,14 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.foundation.layout)
 
     // Jetpack Compose
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
-
+    implementation(libs.androidx.foundation)
     // Material Design
     implementation(libs.androidx.material3)
 
@@ -88,6 +93,13 @@ dependencies {
 
     // Coil
     implementation(libs.coil3.coil.compose)
-//    implementation(libs.coil.compose)
+    implementation(libs.coil3.network.ktor)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.cio)
+    implementation(libs.ktor.client.android)
+    implementation(libs.jsoup)
+
+
 }

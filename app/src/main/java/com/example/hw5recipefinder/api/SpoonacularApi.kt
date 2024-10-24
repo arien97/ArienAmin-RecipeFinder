@@ -16,7 +16,6 @@ data class Recipe(
     val summary: String? = null,
     val instructions: String? = null,
     val extendedIngredients: List<Ingredient> = emptyList()  // Default to an empty list
-
 )
 
 data class Ingredient(
@@ -45,7 +44,7 @@ interface SpoonacularApiService {
 
     @GET("recipes/{id}/information")
     suspend fun getRecipeDetails(
-        @Query("id") id: Int,
+        @Path("id") id: Int,
         @Query("apiKey") apiKey: String = "22a0427b740a4ea99b53fd17e6e70c2c"
     ): Recipe
 }
